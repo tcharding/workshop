@@ -34,23 +34,64 @@ fn main() {
     let (dummy_out_point, dummy_utxo) = dummy_unspent_transaction_output(&wpkh);
 
     // The script code required to spend a p2wpkh output.
-    let script_code = todo!();
+    let script_code = dummy_utxo
+        .script_pubkey
+        .p2wpkh_script_code()
+        .expect("p2wpkh script pubkey");
 
     // The input for the transaction we are constructing.
-    let input = todo!();
+    let input = TxIn {
+        previous_output: dummy_out_point, // The dummy output we are spending.
+        script_sig: ScriptBuf::default(), // For a p2wpkh script_sig is empty.
+        sequence: Sequence::ENABLE_RBF_NO_LOCKTIME,
+        witness: Witness::default(), // Filled in after signing.
+    };
 
     // The spend output is locked to a key controlled by the receiver.
-    let spend = todo!();
+    let spend = TxOut {
+        value: SPEND_AMOUNT,
+        script_pubkey: address.script_pubkey(),
+    };
 
     // The change output is locked to a key controlled by us.
-    let change = todo!();
+    let change = TxOut {
+        value: CHANGE_AMOUNT,
+        script_pubkey: ScriptBuf::new_v0_p2wpkh(&wpkh), // Change comes back to us.
+    };
 
     // The transaction we want to sign and broadcast.
-    let mut unsigned_tx = todo!();
+    let mut unsigned_tx = Transaction {
+        version: 2,                          // Transaction version 2 as per BIP-68.
+        lock_time: absolute::LockTime::ZERO, // Ignore the locktime.
+        input: vec![input],                  // Input goes into index 0.
+        output: vec![spend, change],         // Outputs, order does not matter.
+    };
+    let input_index = 0;
 
-    //
-    // TODO: Sign the unsigned transaction.
-    //
+    // Get the sighash to sign.
+
+    let sighash_type = EcdsaSighashType::All;
+    let mut sighasher = SighashCache::new(&mut unsigned_tx);
+
+    let sighash = sighasher
+        .segwit_signature_hash(input_index, &script_code, SPEND_AMOUNT, sighash_type)
+        .expect("failed to construct sighash");
+
+    // Sign the sighash using the secp256k1 library (exported by rust-bitcoin).
+    let msg = Message::from(sighash);
+    let sig = secp.sign_ecdsa(&msg, &sk);
+
+    // Update the witness stack.
+    sighasher
+        .witness_mut(input_index)
+        .unwrap()
+        .push_bitcoin_signature(&sig.serialize_der(), sighash_type);
+
+    // Get the signed transaction.
+    let tx = sighasher.into_transaction();
+
+    // BOOM! Transaction signed and ready to broadcast.
+    println!("{:#?}", tx);
 }
 
 /// An example of keys controlled by the transaction sender.
@@ -68,7 +109,7 @@ fn senders_keys<C: Signing>(secp: &Secp256k1<C>) -> (SecretKey, WPubkeyHash) {
 ///
 /// We lock the spend output to the key associated with this address.
 ///
-/// (FWIW this is an arbitrary mainnet address.)
+/// (FWIW this is a random mainnet address from block 80219.)
 fn receivers_address() -> Address {
     Address::from_str("bc1q7cyrfmck2ffu2ud3rn5l5a8yv6f0chkp0zpemf")
         .expect("a valid address")
