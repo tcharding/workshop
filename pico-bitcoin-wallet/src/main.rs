@@ -17,16 +17,14 @@ fn main() -> Result<()> {
             println!("Command missing\n\n");
             help()
         }
-        Some(command) => {
-            match &*command {
-                "scan" => scan(),
-                "address" => address(),
-                "balance" => balance(),
-                "send" => send(args),
-                "help" | "--help" |"-h" => help(),
-                _ => bail!("Unknown command: `{}`", command),
-            }
-        }
+        Some(command) => match &*command {
+            "scan" => scan(),
+            "address" => address(),
+            "balance" => balance(),
+            "send" => send(args),
+            "help" | "--help" | "-h" => help(),
+            _ => bail!("Unknown command: `{}`", command),
+        },
     }
 }
 
@@ -115,10 +113,14 @@ fn load_private_key() -> Result<PrivateKey> {
     match std::fs::read_to_string(&sk_path) {
         Ok(key) => key.parse().context("failed to parse private key"),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            let key = PrivateKey::new(secp256k1::SecretKey::new(&mut rand::thread_rng()), Network::Regtest);
-            std::fs::write(&sk_path, key.to_wif().as_bytes()).context("failed to save private key")?;
+            let key = PrivateKey::new(
+                secp256k1::SecretKey::new(&mut rand::thread_rng()),
+                Network::Regtest,
+            );
+            std::fs::write(&sk_path, key.to_wif().as_bytes())
+                .context("failed to save private key")?;
             Ok(key)
-        },
+        }
         Err(error) => Err(anyhow!(error).context("failed to read private key")),
     }
 }
