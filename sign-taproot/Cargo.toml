@@ -1,0 +1,10 @@
+[package]
+name = "sign-taproot"
+version = "0.1.0"
+authors = ["Tobin C. Harding <me@tobin.cc"]
+license = "CC0-1.0"
+readme = "../README.md"
+edition = "2021"
+
+[dependencies]
+bitcoin = { version = "0.30.0", features = ["std", "rand-std"]}
