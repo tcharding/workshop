@@ -34,20 +34,61 @@ fn main() {
     let address = receivers_address();
 
     // The input for the transaction we are constructing.
-    let input = todo!();
+    let input = TxIn {
+        previous_output: dummy_out_point, // The dummy output we are spending.
+        script_sig: ScriptBuf::default(), // For a p2tr script_sig is empty.
+        sequence: Sequence::ENABLE_RBF_NO_LOCKTIME,
+        witness: Witness::default(), // Filled in after signing.
+    };
 
     // The spend output is locked to a key controlled by the receiver.
-    let spend = todo!();
+    let spend = TxOut {
+        value: SPEND_AMOUNT,
+        script_pubkey: address.script_pubkey(),
+    };
 
     // The change output is locked to a key controlled by us.
-    let change = todo!();
+    let change = TxOut {
+        value: CHANGE_AMOUNT,
+        script_pubkey: ScriptBuf::new_v1_p2tr(&secp, internal_key, None), // Change comes back to us.
+    };
 
     // The transaction we want to sign and broadcast.
-    let mut unsigned_tx = todo!();
+    let mut unsigned_tx = Transaction {
+        version: 2,                          // Transaction version 2 as per BIP-68.
+        lock_time: absolute::LockTime::ZERO, // Ignore the locktime.
+        input: vec![input],                  // Input goes into index 0.
+        output: vec![spend, change],         // Outputs, order does not matter.
+    };
+    let input_index = 0;
 
-    //
-    // TODO: Sign the unsigned transaction.
-    //
+    // Get the sighash to sign.
+
+    let sighash_type = TapSighashType::Default;
+    let prevouts = vec![dummy_utxo];
+    let prevouts = Prevouts::All(&prevouts);
+
+    let mut sighasher = SighashCache::new(&mut unsigned_tx);
+    let sighash = sighasher
+        .taproot_key_spend_signature_hash(input_index, &prevouts, sighash_type)
+        .expect("failed to construct sighash");
+
+    // Sign the sighash using the secp256k1 library (exported by rust-bitcoin).
+    let tweaked: TweakedKeyPair = keypair.tap_tweak(&secp, None);
+    let msg = Message::from_slice(sighash.as_ref()).unwrap();
+    let sig = secp.sign_schnorr(&msg, &tweaked.to_inner());
+
+    // Update the witness stack.
+    sighasher
+        .witness_mut(input_index)
+        .unwrap()
+        .push(sig.as_ref());
+
+    // Get the signed transaction.
+    let tx = sighasher.into_transaction();
+
+    // BOOM! Transaction signed and ready to broadcast.
+    println!("{:#?}", tx);
 }
 
 /// An example of keys controlled by the transaction sender.
