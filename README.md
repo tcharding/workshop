@@ -1,30 +1,11 @@
 Rust Bitcoin Presentations
 ==========================
 
-This repository is for holding material people use to do presentations (talks, workshops) on
-`rust-bitcoin`, the purpose is to share resources and time invested.
+This repository is for holding material people use to do workshops on `rust-bitcoin`, the purpose is
+to share resources and time invested.
 
-One branch per presentation until the presentation is delivered then probably archive the content in
-a directory.
+## Directory listing
 
-## Presentations
-
-Presentations by conference including branch name, may exist or just be a place holder.
-
-### Tabconf 2023
-
-- date: September 6 - 9, 2023
-- URL: https://2023.tabconf.com/
-- type: Workshop
-- status: Submission
-- presenter[s]: @tcharding, others to join in hopefully
-- branch: 2023-tabconf
-
-### BTC Prague 2023
-
-- date: June 8 - 10, 2023
-- URL: https://www.btcprague.com/
-- type: Workshop
-- status: Accepted
-- presenter[s]: @kixunil (with help from @tcharding)
-- branch: 2023-btc-prague
+`sign-segwit-v0`: Sign a segwit v0 transaction (basic transaction signing).
+`sign-taproot`: Sign a taproot transaction (as for (1) but using taproot).
+`pico-bitcoin-wallet`: Create a small Bitcoin wallet and run it against a local regtest node.
