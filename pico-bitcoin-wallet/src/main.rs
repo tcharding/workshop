@@ -148,8 +148,107 @@ fn scan() -> Result<()> {
 /// - You need to get some coins to send first, either:
 ///   - By mining to an address controlled by a wallet in bitcoind then send using bitcoin-cli to an address you create with `address` above.
 ///   - By mining directly to an address you create with `address` above (make sure you mine another 100 blocks so the coins are spendable).
-fn send(_args: std::env::Args) -> Result<()> {
-    todo!("Implement send once you have scan working")
+fn send(mut args: std::env::Args) -> Result<()> {
+    let conf = config::load()?;
+    let mut db = db::Db::open()?;
+    let connection = bitcoincore_rpc::Client::new(&conf.bitcoind_uri, conf.bitcoind_auth)
+        .context("failed to connect to bitcoind")?;
+
+    // Function args should be: <address> <amount>
+    let address = args
+        .next()
+        .ok_or_else(|| anyhow!("missing address"))?
+        .parse::<Address<_>>()
+        .context("invalid bitcoin address")?
+        .require_network(Network::Regtest)
+        .context("invalid bitcoin address")?;
+    let amount = args
+        .next()
+        .ok_or_else(|| anyhow!("missing amount"))?
+        .parse::<Amount>()
+        .context("invalid amount")?;
+
+    let payee_script_pubkey = address.script_pubkey();
+
+    let private_key = load_private_key()?;
+    let key_pair = secp256k1::KeyPair::from_secret_key(secp256k1::SECP256K1, &private_key.inner)
+        .tap_tweak(secp256k1::SECP256K1, None)
+        .to_inner();
+
+    // We are only spending utxos that are locked to the same keys as the address we control (hint: use get_address()).
+    let script_pubkey = get_address()?.script_pubkey();
+
+    let mut txins = Vec::new();
+    let mut prevouts = Vec::new();
+    for result in db.iter_unspent()?.iter()? {
+        let (prev_out, amt) = result?;
+        let txin = TxIn {
+            previous_output: prev_out,
+            sequence: Sequence::ENABLE_RBF_NO_LOCKTIME,
+            script_sig: Default::default(),
+            witness: Default::default(),
+        };
+        txins.push(txin);
+
+        let prevout = TxOut {
+            script_pubkey: script_pubkey.clone(),
+            value: amt.to_sat(),
+        };
+        prevouts.push(prevout);
+    }
+    let total_amt = prevouts
+        .iter()
+        .map(|txout| Amount::from_sat(txout.value))
+        .sum::<Amount>();
+    let remaining = total_amt
+        .checked_sub(amount)
+        .ok_or_else(|| anyhow!("Not enough money, you have {}", total_amt))?;
+    let weight = transaction::predict_weight(
+        txins
+            .iter()
+            .map(|_| transaction::InputWeightPrediction::from_slice(0, &[64])),
+        [payee_script_pubkey.len(), script_pubkey.len()]
+            .iter()
+            .copied(),
+    );
+    let fee = weight * FeeRate::BROADCAST_MIN;
+    let change_amount = remaining
+        .checked_sub(fee)
+        .ok_or_else(|| anyhow!("not enough money, you have {}", total_amt))?;
+    let payment = TxOut {
+        script_pubkey: payee_script_pubkey,
+        value: amount.to_sat(),
+    };
+    let change = TxOut {
+        script_pubkey: script_pubkey.clone(),
+        value: change_amount.to_sat(),
+    };
+    let mut transaction = Transaction {
+        version: 2,
+        lock_time: bitcoin::absolute::LockTime::ZERO,
+        input: txins,
+        output: vec![payment, change],
+    };
+    let prevouts = bitcoin::sighash::Prevouts::All(&prevouts);
+    let mut cache = bitcoin::sighash::SighashCache::new(&mut transaction);
+    for i in 0..cache.transaction().input.len() {
+        let hash = cache
+            .taproot_key_spend_signature_hash(
+                i,
+                &prevouts,
+                bitcoin::sighash::TapSighashType::Default,
+            )
+            .unwrap();
+        let signature = secp256k1::SECP256K1.sign_schnorr(&hash.into(), &key_pair);
+        *cache.witness_mut(i).unwrap() = Witness::from_slice(&[signature.as_ref()]);
+    }
+    connection
+        .send_raw_transaction(&transaction)
+        .context("failed to broadcast transaction")?;
+    for input in transaction.input {
+        db.set_spent(&input.previous_output)?;
+    }
+    Ok(())
 }
 
 /// Prints the balance out of database, you must call `scan` first to populate the database.
