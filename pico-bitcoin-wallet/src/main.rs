@@ -2,6 +2,9 @@
 //!
 //! [Rust Bitcoin]: https://rust-bitcoin.org
 
+#![allow(unused_imports)]
+#![allow(dead_code)]
+
 use std::convert::TryInto;
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -42,6 +45,12 @@ fn main() -> Result<()> {
 /// You can use a taproot address if you would like to play with taproot spends or alternatively you
 /// can use a segwit v0 address. Note that the PSBT signing APIs are slightly different for each.
 fn address() -> Result<()> {
+    let address = get_address()?;
+    println!("{}", address);
+    Ok(())
+}
+
+fn get_address() -> Result<Address> {
     todo!("Implement this")
 }
 
