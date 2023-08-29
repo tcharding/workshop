@@ -51,7 +51,18 @@ fn address() -> Result<()> {
 }
 
 fn get_address() -> Result<Address> {
-    todo!("Implement this")
+    let private_key = load_private_key()?;
+    let pub_key = private_key
+        .inner
+        .x_only_public_key(&**secp256k1::SECP256K1)
+        .0;
+
+    Ok(Address::p2tr(
+        &secp256k1::SECP256K1,
+        pub_key,
+        None,
+        Network::Regtest,
+    ))
 }
 
 /// Scans the Bitcoin blockchain.
