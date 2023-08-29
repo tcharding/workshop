@@ -2,9 +2,15 @@
 //!
 //! [Rust Bitcoin]: https://rust-bitcoin.org
 
+use std::convert::TryInto;
+
 use anyhow::{anyhow, bail, Context, Result};
-use bitcoin::{Amount, Network, PrivateKey};
-use bitcoincore_rpc::Client;
+use bitcoin::key::TapTweak;
+use bitcoin::{
+    transaction, Address, Amount, FeeRate, Network, OutPoint, PrivateKey, Sequence, Transaction,
+    TxIn, TxOut, Witness,
+};
+use bitcoincore_rpc::{Client, RpcApi};
 
 mod config;
 mod db;
