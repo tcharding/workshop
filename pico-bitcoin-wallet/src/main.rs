@@ -72,7 +72,74 @@ fn get_address() -> Result<Address> {
 ///
 /// Call this each time you use `bitcoin-cli generatetoaddress` to mine coins to your address.
 fn scan() -> Result<()> {
-    todo!("Implement scan once you have address working")
+    let conf = config::load()?;
+    let connection = bitcoincore_rpc::Client::new(&conf.bitcoind_uri, conf.bitcoind_auth)
+        .context("failed to connect to bitcoind")?;
+    let current_height = connection
+        .get_block_count()
+        .context("Failed to get block count")?;
+    let mut db = db::Db::open()?;
+    let last_height = db.get_last_height()?;
+    let script_pubkey = get_address()?.script_pubkey();
+    // we need to move txid below but not `script_pubkey`
+    let script_pubkey = &script_pubkey;
+    let mut block_count = 0;
+    let mut tx_count = 0;
+    let mut txos = 0;
+    let mut total_amount = 0;
+    let txos_iter = ((last_height + 1)..=current_height)
+        .flat_map(|height| {
+            let block = connection
+                .get_block_hash(height)
+                .context("Failed to get block hash")
+                .and_then(|block_hash| {
+                    connection
+                        .get_block(&block_hash)
+                        .context("Failed to get block hash")
+                });
+            match block {
+                Ok(block) => {
+                    block_count += 1;
+                    either::Left(block.txdata.into_iter().map(Ok))
+                }
+                Err(error) => either::Right(std::iter::once(Err(error))),
+            }
+        })
+        .flat_map(|transaction| match transaction {
+            Ok(transaction) => {
+                tx_count += 1;
+                let txid = transaction.txid();
+                let iter = transaction
+                    .output
+                    .into_iter()
+                    .enumerate()
+                    .map(move |(i, txout)| Ok((txid, i, txout)));
+                either::Left(iter)
+            }
+            Err(error) => either::Right(std::iter::once(Err(error))),
+        })
+        .filter_map(|result| match result {
+            Ok((txid, i, txout)) => {
+                if txout.script_pubkey == *script_pubkey {
+                    txos += 1;
+                    total_amount += txout.value;
+                    let out_point = OutPoint {
+                        txid,
+                        vout: i.try_into().unwrap(),
+                    };
+                    Some(Ok((out_point, txout.value)))
+                } else {
+                    None
+                }
+            }
+            Err(error) => Some(Err(error)),
+        });
+    db.store_txos(txos_iter, current_height)?;
+    println!(
+        "Scanned {} blocks and {} transactions, found {} txos totalling {} sats.",
+        block_count, tx_count, txos, total_amount
+    );
+    Ok(())
 }
 
 /// Sends a transaction.
