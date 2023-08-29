@@ -108,6 +108,7 @@ fn help() -> Result<()> {
 /// Loads a private key from file.
 ///
 /// Creates a new private key if file is not found.
+#[allow(dead_code)]
 fn load_private_key() -> Result<PrivateKey> {
     let sk_path = db::private_key_file()?;
 
@@ -123,6 +124,7 @@ fn load_private_key() -> Result<PrivateKey> {
 }
 
 /// Gets an RPC client for `bitcoind`.
+#[allow(dead_code)]
 fn bitcoind_rpc_client() -> Result<Client> {
     let conf = config::load()?;
     let client = bitcoincore_rpc::Client::new(&conf.bitcoind_uri, conf.bitcoind_auth)
