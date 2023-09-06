@@ -1,6 +1,12 @@
 TABConf 2023
 ============
 
+## wifi
+
+ssid: omni guest
+pass: TABConfwekt
+
+
 Welcome! The aim of this workshop is to have some fun playing around with parts of the
 [rust-bitcoin](https://docs.rs/bitcoin/0.30.1/bitcoin/index.html) v0.30.1 API.
 
