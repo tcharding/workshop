@@ -3,7 +3,7 @@ TABConf 2023
 
 ## wifi
 
-ssid: omni guest
+ssid: omni meeting
 pass: TABConfwekt
 
 
