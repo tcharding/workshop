@@ -25,6 +25,7 @@ fn main() {
     // Get a secret key we control and the pubkeyhash of the associated pubkey.
     // In a real application these would come from a stored secret.
     let (sk, wpkh) = senders_keys(&secp);
+    let pk = bitcoin::PublicKey::new(sk.public_key(&secp));
 
     // Get an address to send to.
     let address = receivers_address();
@@ -82,10 +83,9 @@ fn main() {
     let sig = secp.sign_ecdsa(&msg, &sk);
 
     // Update the witness stack.
-    sighasher
-        .witness_mut(input_index)
-        .unwrap()
-        .push_bitcoin_signature(&sig.serialize_der(), sighash_type);
+    let witness = sighasher.witness_mut(input_index).unwrap();
+    witness.push_bitcoin_signature(&sig.serialize_der(), sighash_type);
+    witness.push(pk.to_bytes());
 
     // Get the signed transaction.
     let tx = sighasher.into_transaction();
