@@ -43,7 +43,7 @@ fn main() -> Result<()> {
 /// purposes it will suffice.
 ///
 /// You can use a taproot address if you would like to play with taproot spends or alternatively you
-/// can use a segwit v0 address. Note that the PSBT signing APIs are slightly different for each.
+/// can use a segwit v0 address.
 fn address() -> Result<()> {
     let address = get_address()?;
     println!("{}", address);
