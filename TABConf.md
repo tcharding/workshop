@@ -12,10 +12,10 @@ whichever is likely to amuse you the most.
 3. `pico-bitcoin-wallet`: Create a small Bitcoin wallet and run it against a local regtest node. We
    provide keys and database code, you do:
 
-  - Configure and run `bitcoind` regtest instance.
-  - Implement code to create a new address.
-  - Implement code to scan the blockchain for utxos controlled by your secret keys.
-  - Implement code to sign and send a transaction.
+    - Configure and run `bitcoind` regtest instance.
+    - Implement code to create a new address.
+    - Implement code to scan the blockchain for utxos controlled by your secret keys.
+    - Implement code to sign and send a transaction.
 
 There are solutions on branches for each task (and the subparts of task 3). Just fetch all the
 branches and look at the ones that start with `solution-`.
