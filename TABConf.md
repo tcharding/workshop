@@ -28,3 +28,20 @@ is a big help, opinions count, we are trying to create an API that is intuitive 
 misuse so any feedback is really helpful.
 
 Thanks for showing up!
+
+
+Bitcoin Park Workshop
+---------------------
+
+Above is as it was for TABConf, if you did the workshop at TABConf one idea for
+today would be to do the `pico-bitcoin-wallet` address task, then if you get that
+easy enough checkout the `solution-pico-scan` branch and from there fill in the
+`send` function.
+
+### More about the three `pico-bitcoin-wallet` tasks
+
+- address: Simple, a few lines of code.
+- scan: Use `bitcoincore-rpc` to get blocks from regtest node (learn: RPC, and
+  the `Block` and `Transaction` types).
+- send: Sign and send a transaction (learn: Transaction signing, UTXO
+  management, transaction fees/weights, RPC.)
